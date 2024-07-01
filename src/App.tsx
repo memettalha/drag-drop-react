@@ -1,97 +1,93 @@
 import React, { useState, useEffect } from "react";
-import styled from "@emotion/styled";
-import { DragDropContext, Droppable, Draggable } from "react-beautiful-dnd";
-import type { Quote as QuoteType } from '../types'
-import { nanoid } from 'nanoid'
-import { Button, Modal, Form } from 'react-bootstrap'
-import './App.css'
-
-const initial = Array.from({ length: 10 }, (v, k) => k).map(k => {
-  const custom: QuoteType = {
-    id: `id-${k}`,
-    content: `Quote ${k}`
-  };
-
-  return custom;
-});
-
-const grid = 8;
-const reorder = (list, startIndex, endIndex): QuoteType[] => {
-  const result: QuoteType[] = Array.from(list);
-  const [removed] = result.splice(startIndex, 1);
-  result.splice(endIndex, 0, removed);
-
-  return result;
-};
-
-const QuoteItem = styled.div`
-  width: 280px;
-  height: 40px;
-  border: 1px solid grey;
-  margin-bottom: ${grid}px;
-  background-color: lightblue;
-  padding: ${grid}px;
+import styled from "styled-components";
+import { DragDropContext, Draggable, Droppable } from "react-beautiful-dnd";
+import { nanoid } from "nanoid";
+import {FaTrash, FaEdit} from "react-icons/fa"
+const Container = styled.div`
+  display:flex;
+  flex-direction:column;
+  align-items:center;
+  margin-top:50px;
 `;
 
-const CenteredContainer = styled.div`
-  display: flex;
-  justify-content: center;
-  align-items: center;
-  height: 100vh; /* Sayfa yüksekliğinin tamamını kaplamak için */
-`;
+const InputContainer = styled.div`
+display:flex;
+justify-content:center;
+gap:1rem;
+margin-bottom:20px;`;
 
-const QuoteItemContainer = styled.div`
-  display: flex;
-  justify-content: space-between;
-  padding-top: 5px;
-`;
+const TextField = styled.input`
+padding:8px;
+font-size:16px;
+border:1px solid #ccc;
+border-radius:4px;
+width:200px;`
 
-function Quote({ quote, index, onEditClick }: { quote: QuoteType, index: number, onEditClick: (quoteId: string) => void }) {
-  const handleClick = () => {
-    onEditClick(quote.id);
-  };
+const Button = styled.div`
+padding:8px 16px;
+font-size:16px;
+background-color:black;
+color:white;
+border:none;
+border-radius:4px;
+cursor:pointer;
 
-  return (
-    <Draggable draggableId={quote.id} index={index}>
-      {provided => (
-        <div>
-          <QuoteItemContainer
-            ref={provided.innerRef}
-            {...provided.draggableProps}
-            {...provided.dragHandleProps}
-          >
-            <QuoteItem>
-              {quote.content}
-            </QuoteItem>
-            <Button variant="outline-light" className="edit-button" onClick={handleClick}>
-              Düzenle
-            </Button>
-          </QuoteItemContainer>
-        </div>
-      )}
-    </Draggable>
-  );
+&hover{
+  background-color:#282b29;
+}`;
+
+const ListContainer = styled.div`
+display:flex;
+justify-content:center;
+gap:1rem;
+margin:50px;`
+
+const List = styled.div`
+display:flex;
+flex-direction:column;
+text-align:center;
+width:300px;`
+
+const ListBox = styled.div`
+display:flex;
+justify-content:space-between;
+align-items: center;
+padding: 16px;
+margin: 8px;
+background-color: #fff;
+border:1px solid #ccc;
+border-radius:4px;
+box-shadow:0 2px 4px rgba(0,0,0,0.1);
+`
+
+const EditDeleteContainer = styled.div`
+display:flex;
+gap:10px;`
+
+const ModalBackground = styled.div`
+position: fixed;
+top: 0;
+left:0;
+right:0;
+bottom:0;
+background-color:rgba(0,0,0,0.5);
+display:flex;
+justify-content: center;
+align-items: center;
+`
+interface ItemsProps{
+  id:string;
+  content:string;
 }
-
-const QuoteList = React.memo(function QuoteList({ quotes, onEditClick }: { quotes: QuoteType[], onEditClick: (quoteId: string) => void }) {
-  return quotes.map((quote: QuoteType, index: number) => (
-    <Quote quote={quote} index={index} key={quote.id} onEditClick={onEditClick} />
-  ));
-});
-
 function App() {
-  const [newQuoteContent, setNewQuoteContent] = useState(""); // State for new quote content
-  const [state, setState] = useState({ quotes: initial });
-  const [isEditDialogOpen, setIsEditDialogOpen] = useState(false);
-  const [editDialogTodoId, setEditDialogTodoId] = useState<string | null>(null);
-  const [editedQuoteContent, setEditedQuoteContent] = useState("");
+  const [items, setItems] = useState<ItemsProps[]>([])
+  const [newItemContent, setNewItemContent] = useState<string>("");
+  const [open,setOpen] =useState<boolean>(false);
+  const [inputEdit, setInputEdit] = useState<string>("");
+  const [selectedId, setSelectedId] = useState<string>("");
 
-  useEffect(() => {
-    // Sayfa açıldığında boş bir liste ile başla
-    setState({ quotes: [] });
-  }, []); 
-
-  function onDragEnd(result: any) {
+  //OnDragEnd Metodu ekleme
+  const  onDragEnd = (result:any) => {
     if (!result.destination) {
       return;
     }
@@ -100,144 +96,94 @@ function App() {
       return;
     }
 
-    const quotes: QuoteType[] = reorder(
-      state.quotes,
-      result.source.index,
-      result.destination.index
-    );
+    const itemsContent = [...items];
+    const [RemovedItems] = itemsContent.splice(result.source.index,1);
+    itemsContent.splice(result.destination.index,0,RemovedItems);
 
-    setState({ quotes });
+    setItems( itemsContent);
+  }
+  const addItems = () => {
+    if(!newItemContent.trim()) return;
+    const listItemId = nanoid();
+    const newList = {
+      id:listItemId,
+      content: newItemContent,
+    }
+    setItems([...items, newList])
+    setNewItemContent("");
   }
 
-  const handleEditClick = (quoteId: string) => {
-    setEditDialogTodoId(quoteId);
-    setIsEditDialogOpen(true);
-    const quoteToEdit = state.quotes.find((quote) => quote.id === quoteId);
-    setEditedQuoteContent(quoteToEdit?.content || "");
-  };
-
-  const handleEditClose = () => {
-    setIsEditDialogOpen(false);
-    setEditDialogTodoId(null);
-    setEditedQuoteContent("");
-  };
-
-  const handleEditSave = () => {
-    if (editedQuoteContent.trim() === "") {
-      // Düzenlenmiş içerik boş olamaz
-      return;
+  const deleteItem = (id:string) => {
+    setItems((items) => {
+      return items.filter((item) => {item.id !==id})
+    })
+  }
+  const openEditModal = (id:string, content:string) => {
+    setOpen(true);
+    setInputEdit(content);
+    setSelectedId(id);
+  }
+  const saveEditedItem = () => {
+    const selectedItem = items.find((item) => item.id = selectedId);
+    if(selectedItem){
+      selectedItem.content = inputEdit;
+      setItems([...items])
     }
-
-    const updatedQuotes = state.quotes.map((quote) =>
-      quote.id === editDialogTodoId
-        ? { ...quote, content: editedQuoteContent }
-        : quote
-    );
-
-    setState({ quotes: updatedQuotes });
-    handleEditClose();
-  };
-
+    setOpen(false)
+  }
+  const ClosedEditedModal = () => setOpen(false);
   return (
     <>
-      <CenteredContainer>
-        <div className="app-container">
-          <input
-            className="input-add"
-            type="text"
-            value={newQuoteContent}
-            onChange={(e) => setNewQuoteContent(e.target.value)}
-            placeholder="Add new content.."
-          />
-          <Button
-            variant="info"
-            size="lg"
-            onClick={() => {
-              if (newQuoteContent.trim() === "") {
-                return; // Boş alıntı eklenemez
-              }
+      <Container>
+        <InputContainer>
+        <TextField type="text" value={newItemContent} onChange = {(e) => setNewItemContent(e.target.value)} 
+        placeholder= "Yeni bir madde ekleyin"/>
+        <Button onClick={addItems}>Ekle</Button>
+        </InputContainer>
+        <ListContainer>
+          <List>
+            <h2>To-do List</h2>
+              <DragDropContext onDragEnd={onDragEnd}>
+                <Droppable droppableId="myList">
+                  {(provider) =>  (
+                    <div {...provider.droppableProps} ref={provider.innerRef}>
+                    {items.map(({id,content}:ItemsProps,index) => (
+                      <Draggable key={id} draggableId={id} index={index}>
+                        {(provider) => (
+                          <ListBox>
+                             ref={provider.innerRef}
+                            {...provider.draggableProps}
+                            {...provider.dragHandleProps}
+                            {content}
+                            <EditDeleteContainer>
+                            <Button onClick={() => deleteItem(id)}><FaTrash/></Button>
+                            <Button onClick={() => openEditModal(id,content)}><FaEdit/></Button>
+                            </EditDeleteContainer>
+                          </ListBox>
+                        )}
+                      </Draggable>
+                    ))}
+                    {provider.placeholder}
+                    </div>
+                  )}
+                </Droppable>
+              </DragDropContext>
+          </List>
+        </ListContainer>
+      </Container>
+      {open &&(
+        <ModalBackground onClick={ClosedEditedModal}>
+          <ModalContainer onClick={(e) => e.stopPropagation()}>
+            <TextField type="text" value={inputEdit} onChange={(e) => setInputEdit(e.target.value)}>
 
-              const newQuote: QuoteType = {
-                id: `id-${nanoid()}`,
-                content: newQuoteContent
-              };
-
-              setState((prevState) => ({
-                quotes: [...prevState.quotes, newQuote]
-              }));
-
-              setNewQuoteContent(""); // Input'u temizle
-            }}
-          >
-            Add
-          </Button>
-
-          <DragDropContext onDragEnd={onDragEnd}>
-            <Droppable droppableId="list">
-              {provided => (
-                <div ref={provided.innerRef} {...provided.droppableProps}>
-                  <QuoteList quotes={state.quotes} onEditClick={handleEditClick} />
-                  {provided.placeholder}
-                </div>
-              )}
-            </Droppable>
-          </DragDropContext>
-        </div>
-
-        <Modal show={isEditDialogOpen} onHide={handleEditClose}>
-          <Modal.Header closeButton>
-            <Modal.Title>Düzenle</Modal.Title>
-          </Modal.Header>
-          <Modal.Body>
-            <Form.Control
-              type="text"
-              value={editedQuoteContent}
-              onChange={(e) => setEditedQuoteContent(e.target.value)}
-            />
-          </Modal.Body>
-          <Modal.Footer>
-            <Button variant="secondary" onClick={handleEditClose}>
-              İptal
-            </Button>
-            <Button variant="primary" onClick={handleEditSave}>
-              Kaydet
-            </Button>
-          </Modal.Footer>
-        </Modal>
-      </CenteredContainer>
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-              
-
-
-
-
+            </TextField>
+            <Button onClick={saveEditedItem}>OK</Button>
+          </ModalContainer>
+        </ModalBackground>
+      )}
     </>
+
+
   );
 }
 
